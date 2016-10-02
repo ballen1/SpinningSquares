@@ -1,5 +1,7 @@
 #include <GL/glut.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 640
@@ -10,32 +12,47 @@
 #define STARTY_POS 100
 
 #define MAX_RECTANGLES 15
+#define MAX_RECT_DIMENSION 15
 
-#define SIM_SPEED 5
+#define SIM_SPEED 0.025
 
 struct Rectangle {
+
   float xOrigin;
   float yOrigin;
   float width;
   float height;
+ 
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+
+  float rotation;
+  float rotationSpeed;
+  int rotationDir;
+
+  float vectorX;
+  float vectorY;
+
 };
 
 void display();
 void glInit();
 void reshape(int width, int height);
-void generateRectangles(Rectangle* rects);
+void generateRectangles();
 void resetMatrices();
-void handleInput();
+void handleInput(unsigned char key, int x, int y);
+void playScene();
+
+Rectangle rects[MAX_RECTANGLES];
 
 int main (int argc, char* argv[])
 {
  
-  Rectangle rects[MAX_RECTANGLES];
- 
   glutInit(&argc, argv);
   glInit();
 
-  generateRectangles(rects);
+  generateRectangles();
 
   glutMainLoop();
 
@@ -47,6 +64,18 @@ void display()
 {
 
   glClear(GL_COLOR_BUFFER_BIT);
+
+  for (int i = 0; i < MAX_RECTANGLES; i++)
+  {
+    glPushMatrix();
+    glTranslatef(rects[i].xOrigin + (rects[i].width/2.0), rects[i].yOrigin + (rects[i].height/2.0), 0.0);
+    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
+    glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
+    glColor3ub(rects[i].r, rects[i].g, rects[i].b);
+    glRectf(rects[i].xOrigin, rects[i].yOrigin, rects[i].xOrigin+rects[i].width, rects[i].yOrigin+rects[i].height);
+    glPopMatrix();
+  }
+
   glutSwapBuffers();
 
 }
@@ -63,6 +92,7 @@ void glInit()
   glutCreateWindow("Assignment 1");
   glutReshapeFunc(reshape);
   glutDisplayFunc(display);
+  glutKeyboardFunc(handleInput);
 
 }
 
@@ -78,23 +108,66 @@ void resetMatrices()
 {
 
   glMatrixMode(GL_PROJECTION);
-  glOrtho(-VIEWPORT_EXTENT, VIEWPORT_EXTENT, -VIEWPORT_EXTENT, VIEWPORT_EXTENT, -1.0, 1.0);
   glLoadIdentity();
+  glOrtho(-VIEWPORT_EXTENT, VIEWPORT_EXTENT, -VIEWPORT_EXTENT, VIEWPORT_EXTENT, -1.0, 1.0);
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
 }
 
-void handleInput()
-{	
+void handleInput(unsigned char key, int x, int y)
+{
+	
+  switch (key)
+  {
+    case 's':
+      glutIdleFunc(playScene);
+      break;
+    case 'q':
+      exit(0);
+      break;
+    default:
+      break;
 
+  }
 }
 
-void generateRectangles(Rectangle* rects)
+void playScene()
 {
+
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
-    
+    rects[i].rotation += rects[i].rotationSpeed * SIM_SPEED;
   }
+
+  glutPostRedisplay();
+}
+
+void generateRectangles()
+{
+  
+  srand(time(NULL));
+
+  for (int i = 0; i < MAX_RECTANGLES; i++)
+  {
+    rects[i].xOrigin = rand() % VIEWPORT_EXTENT*2 + 1 - VIEWPORT_EXTENT;
+    rects[i].yOrigin = rand() % VIEWPORT_EXTENT*2 + 1 - VIEWPORT_EXTENT;
+    
+    rects[i].width  = rand() % MAX_RECT_DIMENSION + 1;
+    rects[i].height = rand() % MAX_RECT_DIMENSION + 1;
+    
+    rects[i].r = rand() % 255 + 1;
+    rects[i].g = rand() % 255 + 1;
+    rects[i].b = rand() % 255 + 1;
+
+    rects[i].rotation = rand() % 360 + 1;
+
+    ((rand() % 2) == 1) ? rects[i].rotationDir = 1 : rects[i].rotationDir = -1;
+   
+    rects[i].rotationSpeed = (rand() % 10 + 1) / 10.0;
+
+
+  }
+
 }
