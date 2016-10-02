@@ -1,4 +1,5 @@
 #include <GL/glut.h>
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -13,6 +14,7 @@
 
 #define MAX_RECTANGLES 15
 #define MAX_RECT_DIMENSION 15
+#define MIN_RECT_DIMENSION 3
 
 #define SIM_SPEED 0.025
 
@@ -34,6 +36,8 @@ struct Rectangle {
   float vectorX;
   float vectorY;
 
+  float scalingSeed;
+  float scaleSpeed;
 };
 
 void display();
@@ -69,8 +73,9 @@ void display()
   {
     glPushMatrix();
     glTranslatef(rects[i].xOrigin + (rects[i].width/2.0), rects[i].yOrigin + (rects[i].height/2.0), 0.0);
-    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
-    glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
+    glScalef(cos(rects[i].scalingSeed)+1, cos(rects[i].scalingSeed)+1, 1.0);
+    //    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
+     glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
     glColor3ub(rects[i].r, rects[i].g, rects[i].b);
     glRectf(rects[i].xOrigin, rects[i].yOrigin, rects[i].xOrigin+rects[i].width, rects[i].yOrigin+rects[i].height);
     glPopMatrix();
@@ -139,6 +144,8 @@ void playScene()
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
     rects[i].rotation += rects[i].rotationSpeed * SIM_SPEED;
+    rects[i].scalingSeed += rects[i].scaleSpeed * SIM_SPEED;
+    printf("Scaling Seed: %f\n", rects[i].scalingSeed);
   }
 
   glutPostRedisplay();
@@ -151,22 +158,24 @@ void generateRectangles()
 
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
-    rects[i].xOrigin = rand() % VIEWPORT_EXTENT*2 + 1 - VIEWPORT_EXTENT;
-    rects[i].yOrigin = rand() % VIEWPORT_EXTENT*2 + 1 - VIEWPORT_EXTENT;
+    rects[i].xOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
+    rects[i].yOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
     
-    rects[i].width  = rand() % MAX_RECT_DIMENSION + 1;
-    rects[i].height = rand() % MAX_RECT_DIMENSION + 1;
+    rects[i].width  = rand() % (MAX_RECT_DIMENSION + 1 - MIN_RECT_DIMENSION) + MIN_RECT_DIMENSION;
+    rects[i].height = rand() % (MAX_RECT_DIMENSION + 1 - MIN_RECT_DIMENSION) + MIN_RECT_DIMENSION;
     
-    rects[i].r = rand() % 255 + 1;
-    rects[i].g = rand() % 255 + 1;
-    rects[i].b = rand() % 255 + 1;
+    rects[i].r = rand() % 256;
+    rects[i].g = rand() % 256;
+    rects[i].b = rand() % 256;
 
-    rects[i].rotation = rand() % 360 + 1;
+    rects[i].rotation = rand() % (360 + 1);
 
     ((rand() % 2) == 1) ? rects[i].rotationDir = 1 : rects[i].rotationDir = -1;
    
-    rects[i].rotationSpeed = (rand() % 10 + 1) / 10.0;
+    rects[i].rotationSpeed = (rand() % (10 + 1)) / 10.0;
 
+    rects[i].scalingSeed = rand();
+    rects[i].scaleSpeed = ((rand() % 10) + 5) / 100.0;
 
   }
 
