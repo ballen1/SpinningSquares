@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define SCREEN_WIDTH 640
+#define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 640
 
 #define VIEWPORT_EXTENT 50
@@ -12,12 +12,13 @@
 #define STARTX_POS 100
 #define STARTY_POS 100
 
-#define MAX_RECTANGLES 15
+#define MAX_RECTANGLES     15
 #define MAX_RECT_DIMENSION 15
 #define MIN_RECT_DIMENSION 3
 
-#define ROTATE_SPEED 0.025
-#define SCALE_SPEED   0.002
+#define ROTATE_SPEED        0.025
+#define SCALE_SPEED         0.002
+#define VELOCITY_MULTIPLIER 0.0075
 
 struct Rectangle {
 
@@ -72,14 +73,19 @@ void display()
 
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
+
     glPushMatrix();
+
     glTranslatef(rects[i].xOrigin + (rects[i].width/2.0), rects[i].yOrigin + (rects[i].height/2.0), 0.0);
     glScalef(0.33 * cos(rects[i].scalingSeed) + 1.0, 0.33 * cos(rects[i].scalingSeed) + 1.0, 1.0);
     glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
     glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
+
     glColor3ub(rects[i].r, rects[i].g, rects[i].b);
     glRectf(rects[i].xOrigin, rects[i].yOrigin, rects[i].xOrigin+rects[i].width, rects[i].yOrigin+rects[i].height);
+
     glPopMatrix();
+
   }
 
   glutSwapBuffers();
@@ -146,6 +152,9 @@ void playScene()
   {
     rects[i].rotation += rects[i].rotationSpeed * ROTATE_SPEED;
     rects[i].scalingSeed += rects[i].scaleSpeed * SCALE_SPEED;
+
+    rects[i].xOrigin += rects[i].vectorX * VELOCITY_MULTIPLIER;
+    rects[i].yOrigin += rects[i].vectorY * VELOCITY_MULTIPLIER;
   }
 
   glutPostRedisplay();
@@ -176,6 +185,9 @@ void generateRectangles()
 
     rects[i].scalingSeed = rand();
     rects[i].scaleSpeed = ((rand() % 100) + 50) / 100.0;
+
+    rects[i].vectorX = (((rand() % 2) == 1) ? -1 : 1) * (double)rand() / (double)RAND_MAX;
+    rects[i].vectorY = (((rand() % 2) == 1) ? -1 : 1) * (double)rand() / (double)RAND_MAX;
 
   }
 
