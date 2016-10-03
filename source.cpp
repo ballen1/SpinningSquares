@@ -12,13 +12,15 @@
 #define STARTX_POS 100
 #define STARTY_POS 100
 
-#define MAX_RECTANGLES     15
+#define MAX_RECTANGLES     1
 #define MAX_RECT_DIMENSION 15
 #define MIN_RECT_DIMENSION 3
 
 #define ROTATE_SPEED        0.025
 #define SCALE_SPEED         0.002
-#define VELOCITY_MULTIPLIER 0.0075
+#define VELOCITY_MULTIPLIER 0.005
+
+#define M_PI 3.14159265358979323846
 
 struct Rectangle {
 
@@ -42,6 +44,13 @@ struct Rectangle {
   float scaleSpeed;
 };
 
+struct Point {
+
+  float x;
+  float y;
+
+};
+
 void display();
 void glInit();
 void reshape(int width, int height);
@@ -49,6 +58,7 @@ void generateRectangles();
 void resetMatrices();
 void handleInput(unsigned char key, int x, int y);
 void playScene();
+bool hasRectExitedScreen(float xOrigin, float yOrigin, float width, float height, float scaleFactor, float rotation);
 
 Rectangle rects[MAX_RECTANGLES];
 
@@ -74,16 +84,24 @@ void display()
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
 
+
+    float scaleFactor = (0.33 * cos(rects[i].scalingSeed)) + 1.0;
+
+    if (hasRectExitedScreen(rects[i].xOrigin, rects[i].yOrigin, rects[i].width, rects[i].height, scaleFactor, rects[i].rotation * rects[i].rotationDir))
+    {
+      printf("Rectangle %d has exited the screen\n", i);
+    }
+
     glPushMatrix();
 
     glTranslatef(rects[i].xOrigin + (rects[i].width/2.0), rects[i].yOrigin + (rects[i].height/2.0), 0.0);
-    glScalef(0.33 * cos(rects[i].scalingSeed) + 1.0, 0.33 * cos(rects[i].scalingSeed) + 1.0, 1.0);
-    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
+    glRotatef(rects[i].rotation*rects[i].rotationDir, 0.0, 0.0, 1.0);
+    glScalef(scaleFactor, scaleFactor, 1.0);
     glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
 
     glColor3ub(rects[i].r, rects[i].g, rects[i].b);
     glRectf(rects[i].xOrigin, rects[i].yOrigin, rects[i].xOrigin+rects[i].width, rects[i].yOrigin+rects[i].height);
-
+    
     glPopMatrix();
 
   }
@@ -136,6 +154,9 @@ void handleInput(unsigned char key, int x, int y)
     case 's':
       glutIdleFunc(playScene);
       break;
+    case 'p':
+      glutIdleFunc(NULL);
+      break;
     case 'q':
       exit(0);
       break;
@@ -151,6 +172,12 @@ void playScene()
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
     rects[i].rotation += rects[i].rotationSpeed * ROTATE_SPEED;
+
+    if (rects[i].rotation >= 360.0)
+    {
+      rects[i].rotation -= 360.0;
+    }
+
     rects[i].scalingSeed += rects[i].scaleSpeed * SCALE_SPEED;
 
     rects[i].xOrigin += rects[i].vectorX * VELOCITY_MULTIPLIER;
@@ -167,6 +194,7 @@ void generateRectangles()
 
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
+
     rects[i].xOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
     rects[i].yOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
     
@@ -177,7 +205,7 @@ void generateRectangles()
     rects[i].g = rand() % 256;
     rects[i].b = rand() % 256;
 
-    rects[i].rotation = rand() % (360 + 1);
+    rects[i].rotation = rand() % (361);
 
     ((rand() % 2) == 1) ? rects[i].rotationDir = 1 : rects[i].rotationDir = -1;
    
@@ -190,5 +218,50 @@ void generateRectangles()
     rects[i].vectorY = (((rand() % 2) == 1) ? -1 : 1) * (double)rand() / (double)RAND_MAX;
 
   }
+
+}
+
+bool hasRectExitedScreen(float xOrigin, float yOrigin, float width, float height, float scaleFactor, float rotation)
+{ 
+
+  Point rectPoints[4];
+  Point rectPoints_new[4];
+
+  rectPoints[0].x = xOrigin;
+  rectPoints[0].y = yOrigin;
+
+  rectPoints[1].x = xOrigin + width;
+  rectPoints[1].y = yOrigin;
+
+  rectPoints[2].x = xOrigin;
+  rectPoints[2].y = yOrigin + height;
+
+  rectPoints[3].x = xOrigin + width;
+  rectPoints[3].y = yOrigin + height;
+
+  // Convert Rotation into radians
+  rotation = (rotation * M_PI) / 180.0;
+
+  float xCenter = xOrigin + (width/2.0);
+  float yCenter = yOrigin + (height/2.0);
+
+  // Translate Rectangle to Center
+
+  for (int i = 0; i < 4; i++)
+  {
+    rectPoints[i].x -= xCenter;
+    rectPoints[i].y -= yCenter;
+
+    rectPoints[i].x *= scaleFactor;
+    rectPoints[i].y *= scaleFactor;
+
+    rectPoints_new[i].x = rectPoints[i].x * cos(rotation) - rectPoints[i].y * sin(rotation);
+    rectPoints_new[i].y = rectPoints[i].y * cos(rotation) + rectPoints[i].x * sin(rotation);
+
+    rectPoints_new[i].x += xCenter;
+    rectPoints_new[i].y += yCenter;
+  }
+
+  return false;
 
 }
