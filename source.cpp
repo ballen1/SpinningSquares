@@ -16,7 +16,8 @@
 #define MAX_RECT_DIMENSION 15
 #define MIN_RECT_DIMENSION 3
 
-#define SIM_SPEED 0.025
+#define ROTATE_SPEED 0.025
+#define SCALE_SPEED   0.002
 
 struct Rectangle {
 
@@ -73,9 +74,9 @@ void display()
   {
     glPushMatrix();
     glTranslatef(rects[i].xOrigin + (rects[i].width/2.0), rects[i].yOrigin + (rects[i].height/2.0), 0.0);
-    glScalef(cos(rects[i].scalingSeed)+1, cos(rects[i].scalingSeed)+1, 1.0);
-    //    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
-     glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
+    glScalef(0.33 * cos(rects[i].scalingSeed) + 1.0, 0.33 * cos(rects[i].scalingSeed) + 1.0, 1.0);
+    glRotatef(rects[i].rotation, 0.0, 0.0, rects[i].rotationDir);
+    glTranslatef(-(rects[i].xOrigin + (rects[i].width/2.0)), -(rects[i].yOrigin + (rects[i].height/2.0)), 0.0);
     glColor3ub(rects[i].r, rects[i].g, rects[i].b);
     glRectf(rects[i].xOrigin, rects[i].yOrigin, rects[i].xOrigin+rects[i].width, rects[i].yOrigin+rects[i].height);
     glPopMatrix();
@@ -143,9 +144,8 @@ void playScene()
 
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
-    rects[i].rotation += rects[i].rotationSpeed * SIM_SPEED;
-    rects[i].scalingSeed += rects[i].scaleSpeed * SIM_SPEED;
-    printf("Scaling Seed: %f\n", rects[i].scalingSeed);
+    rects[i].rotation += rects[i].rotationSpeed * ROTATE_SPEED;
+    rects[i].scalingSeed += rects[i].scaleSpeed * SCALE_SPEED;
   }
 
   glutPostRedisplay();
@@ -172,10 +172,10 @@ void generateRectangles()
 
     ((rand() % 2) == 1) ? rects[i].rotationDir = 1 : rects[i].rotationDir = -1;
    
-    rects[i].rotationSpeed = (rand() % (10 + 1)) / 10.0;
+    rects[i].rotationSpeed = ((rand() % 15) + 1) / 10.0;
 
     rects[i].scalingSeed = rand();
-    rects[i].scaleSpeed = ((rand() % 10) + 5) / 100.0;
+    rects[i].scaleSpeed = ((rand() % 100) + 50) / 100.0;
 
   }
 
