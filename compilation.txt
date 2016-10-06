@@ -1,0 +1,8 @@
+Windows:
+
+If using Microsoft Visual Studio, after running vcvarsall, use this command:
+cl -Zi <path to this file> opengl32.lib glu32.lib glut32.lib -link -LIBPATH:"<path to libs>"
+
+Mac OSX:
+
+gcc -w -framework OpenGL -framework GLUT -o source source.cpp

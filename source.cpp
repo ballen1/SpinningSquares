@@ -1,4 +1,9 @@
-#include <GL/glut.h>
+#ifdef __APPLE__
+  #include <GLUT/glut.h>
+#else
+  #include <GL/glut.h>
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,12 +47,17 @@ struct Rectangle {
 
   float movementX;
   float movementY;
+  float movementSpeed;
 
   float scalingSeed;
   float scaleSpeed;
 
   float warpX;
   float warpY;
+
+  bool isWrapping;
+  float startX;
+  float startY;
 
 };
 
@@ -124,9 +134,10 @@ void glInit()
   glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
   glutInitWindowPosition(STARTX_POS, STARTY_POS);
 
+  glutCreateWindow("Assignment 1");
+
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-  glutCreateWindow("Assignment 1");
   glutReshapeFunc(reshape);
   glutDisplayFunc(display);
   glutKeyboardFunc(handleInput);
@@ -179,17 +190,20 @@ void playScene()
 
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
+
     rects[i].rotation += rects[i].rotationSpeed * ROTATE_SPEED;
 
     if (rects[i].rotation >= 360.0)
     {
       rects[i].rotation -= 360.0;
     }
-
+    
     rects[i].scalingSeed += rects[i].scaleSpeed * SCALE_SPEED;
 
-    rects[i].xOrigin += rects[i].movementX * VELOCITY_MULTIPLIER;
-    rects[i].yOrigin += rects[i].movementY * VELOCITY_MULTIPLIER;
+    rects[i].xOrigin += rects[i].movementX * rects[i].movementSpeed * VELOCITY_MULTIPLIER;
+    rects[i].yOrigin += rects[i].movementY * rects[i].movementSpeed * VELOCITY_MULTIPLIER;
+
+
   }
 
   glutPostRedisplay();
@@ -204,12 +218,16 @@ void generateRectangles()
   for (int i = 0; i < MAX_RECTANGLES; i++)
   {
 
-    rects[i].xOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
-    rects[i].yOrigin = rand() % (VIEWPORT_EXTENT*2 + 1) - VIEWPORT_EXTENT;
+    rects[i].xOrigin = rand() % (VIEWPORT_EXTENT*2 + (-20)) - VIEWPORT_EXTENT + 10;
+    rects[i].yOrigin = rand() % (VIEWPORT_EXTENT*2 + (-20)) - VIEWPORT_EXTENT + 10;
+
+    rects[i].startX = rects[i].xOrigin;
+    rects[i].startY = rects[i].yOrigin;
+    rects[i].isWrapping = false;
     
     rects[i].width  = rand() % (MAX_RECT_DIMENSION + 1 - MIN_RECT_DIMENSION) + MIN_RECT_DIMENSION;
     rects[i].height = rand() % (MAX_RECT_DIMENSION + 1 - MIN_RECT_DIMENSION) + MIN_RECT_DIMENSION;
-    
+  
     rects[i].r = rand() % 256;
     rects[i].g = rand() % 256;
     rects[i].b = rand() % 256;
@@ -217,23 +235,24 @@ void generateRectangles()
     rects[i].rotation = rand() % (361);
 
     ((rand() % 2) == 1) ? rects[i].rotationDir = 1 : rects[i].rotationDir = -1;
-   
+
     rects[i].rotationSpeed = ((rand() % 15) + 1) / 10.0;
 
-    rects[i].scalingSeed = rand();
+    rects[i].scalingSeed = rand() % 10;
     rects[i].scaleSpeed = ((rand() % 100) + 50) / 100.0;
 
-    // Generate random movement vector components
-    rects[i].movementX = (((rand() % 2) == 1) ? -1 : 1) * RAND_MAX;
-    rects[i].movementY = (((rand() % 2) == 1) ? -1 : 1) * RAND_MAX;
+    rects[i].movementX = (rand() % 20);
+    rects[i].movementY = (rand() % 20);
+    rects[i].movementX = (((rand() % 2) == 1) ? -rects[i].movementX : rects[i].movementX);
+    rects[i].movementY = (((rand() % 2) == 1) ? -rects[i].movementY : rects[i].movementY);
 
-    // Normalize each vector component
     float magnitude = sqrt(rects[i].movementX*rects[i].movementX + rects[i].movementY*rects[i].movementY);
 
     rects[i].movementX /= magnitude;
     rects[i].movementY /= magnitude;
-    
-    // Set up the warp points by walking the movement vector
+
+    rects[i].movementSpeed = ((rand() % 10) + 5.0) / 10.0;
+
     rects[i].warpX = rects[i].xOrigin;
     rects[i].warpY = rects[i].yOrigin;
 
@@ -248,59 +267,75 @@ void generateRectangles()
 
 }
 
+
 bool hasRectExitedScreen(Rectangle *rect, float scaleFactor)
 { 
 
   bool hasExited = false;
-  
-  Point rectPoints[4];
-  Point rectPoints_new[4];
 
-  rectPoints[0].x = rect->xOrigin;
-  rectPoints[0].y = rect->yOrigin;
+  bool wrapComplete1 = rect->movementX >= 0 && rect->movementY >= 0 && rect->xOrigin >= rect->startX && rect->yOrigin >= rect->startY;
+  bool wrapComplete2 = rect->movementX >= 0 && rect->movementY <= 0 && rect->xOrigin >= rect->startX && rect->yOrigin <= rect->startY;
+  bool wrapComplete3 = rect->movementX <= 0 && rect->movementY >= 0 && rect->xOrigin <= rect->startX && rect->yOrigin >= rect->startY;
+  bool wrapComplete4 = rect->movementX <= 0 && rect->movementY <= 0 && rect->xOrigin <= rect->startX && rect->yOrigin <= rect->startY;
 
-  rectPoints[1].x = rect->xOrigin + rect->width;
-  rectPoints[1].y = rect->yOrigin;
-
-  rectPoints[2].x = rect->xOrigin;
-  rectPoints[2].y = rect->yOrigin + rect->height;
-
-  rectPoints[3].x = rect->xOrigin + rect->width;
-  rectPoints[3].y = rect->yOrigin + rect->height;
-
-  // Convert Rotation into radians
-  float rotation = (rect->rotation * M_PI) / 180.0;
-
-  float xCenter = rect->xOrigin + (rect->width/2.0);
-  float yCenter = rect->yOrigin + (rect->height/2.0);
-
-  int pointsOutsideBoundary = 0;
-
-  for (int i = 0; i < 4; i++)
+  if (wrapComplete1 || wrapComplete2 || wrapComplete3 || wrapComplete4)
   {
-
-    rectPoints[i].x -= xCenter;
-    rectPoints[i].y -= yCenter;
-
-    rectPoints[i].x *= scaleFactor;
-    rectPoints[i].y *= scaleFactor;
-
-    rectPoints_new[i].x = rectPoints[i].x * cos(rotation) - rectPoints[i].y * sin(rotation);
-    rectPoints_new[i].y = rectPoints[i].y * cos(rotation) + rectPoints[i].x * sin(rotation);
-
-    rectPoints_new[i].x += xCenter;
-    rectPoints_new[i].y += yCenter;
-
-    if (labs(rectPoints_new[i].x) >= VIEWPORT_EXTENT || labs(rectPoints_new[i].y) >= VIEWPORT_EXTENT)
-    {
-      pointsOutsideBoundary += 1;
-    }
-
+      rect->isWrapping = false;
   }
-
-  if (pointsOutsideBoundary == 4)
+  
+  if (!(rect->isWrapping))
   {
-    hasExited = true;
+
+    Point rectPoints[4];
+    Point rectPoints_new[4];
+
+    rectPoints[0].x = rect->xOrigin;
+    rectPoints[0].y = rect->yOrigin;
+
+    rectPoints[1].x = rect->xOrigin + rect->width;
+    rectPoints[1].y = rect->yOrigin;
+
+    rectPoints[2].x = rect->xOrigin;
+    rectPoints[2].y = rect->yOrigin + rect->height;
+
+    rectPoints[3].x = rect->xOrigin + rect->width;
+    rectPoints[3].y = rect->yOrigin + rect->height;
+
+    float rotation = (rect->rotation * M_PI) / 180.0;
+
+    float xCenter = rect->xOrigin + (rect->width/2.0);
+    float yCenter = rect->yOrigin + (rect->height/2.0);
+
+    int pointsOutsideBoundary = 0;
+  
+    for (int i = 0; i < 4; i++)
+      {
+
+	rectPoints[i].x -= xCenter;
+	rectPoints[i].y -= yCenter;
+
+	rectPoints[i].x *= scaleFactor;
+	rectPoints[i].y *= scaleFactor;
+
+	rectPoints_new[i].x = rectPoints[i].x * cos(rotation) - rectPoints[i].y * sin(rotation);
+	rectPoints_new[i].y = rectPoints[i].y * cos(rotation) + rectPoints[i].x * sin(rotation);
+
+	rectPoints_new[i].x += xCenter;
+	rectPoints_new[i].y += yCenter;
+
+	if (labs(rectPoints_new[i].x) >= VIEWPORT_EXTENT || labs(rectPoints_new[i].y) >= VIEWPORT_EXTENT)
+	  {
+	    pointsOutsideBoundary += 1;
+	  }
+
+      }
+
+    if (pointsOutsideBoundary == 4)
+      {
+	rect->isWrapping = true;
+	hasExited = true;
+      }
+
   }
 
   return hasExited;
